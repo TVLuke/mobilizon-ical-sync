@@ -1,0 +1,24 @@
+[project]
+name = "mobilizon-ical-sync"
+version = "0.1.0"
+description = "Sync iCal feeds into Mobilizon groups as events."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = [
+    "httpx>=0.27",
+    "icalendar>=5.0",
+    "python-dateutil>=2.9",
+    "tzdata; sys_platform == 'win32'",
+    "requests>=2.31",
+]
+
+[project.scripts]
+mobilizon-ical-sync = "mobilizon_ical_sync.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mobilizon_ical_sync*"]

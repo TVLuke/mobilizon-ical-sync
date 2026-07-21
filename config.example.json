@@ -1,0 +1,124 @@
+{
+  "instance_url": "https://mobilizon.example.org",
+  "app": {
+    "name": "iCal sync",
+    "website": "https://example.org"
+  },
+  "state_file": "state.sqlite",
+  "http_timeout_seconds": 30,
+  "organizations": [
+    {
+      "id": "example-org",
+      "group": "my-group",
+      "ical_url": "https://example.org/calendar.ics",
+      "actor_username": "admin",
+      "default_timezone": "Europe/Berlin",
+      "on_removed": "cancel",
+      "visibility": "PUBLIC",
+      "category": "SCIENCE_TECH",
+      "tags": [],
+      "max_future_events": null,
+      "metadata": [
+        {
+          "key": "Das Chaotikum",
+          "title": "Das Chaotikum",
+          "value": "https://chaotikum.org/",
+          "type": "STRING"
+        }
+      ],
+      "default_image": "default.jpg",
+      "title_image_mapping": {
+        "Open Space/Chaostreff": "chaostreff.jpg",
+        "OSM-Stammtisch": "osm.jpg"
+      },
+      "exclude_titles": [
+        "*internal*",
+        "*do not sync*"
+      ],
+      "title_metadata_mapping": {
+        "Open Space*": [
+          {"key": "group", "title": "Chaotikum", "value": "https://chaotikum.org", "type": "STRING"}
+        ]
+      },
+      "location_mapping": {
+        "*makerspace*": {
+          "description": "Makerspace",
+          "street": "Example Street 42",
+          "locality": "Lübeck",
+          "postal_code": "23566",
+          "country": "DE",
+          "latitude": 53.875,
+          "longitude": 10.686,
+          "max_participants": 42
+        }
+      },
+      "default_location": {
+        "description": "Venue name",
+        "street": "Some Street 1",
+        "locality": "Some City",
+        "postal_code": "12345",
+        "region": "Region",
+        "country": "Country",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.0,
+        "longitude": 10.0
+      }
+    },
+    {
+      "comment": "Example using a local iCal file instead of a URL",
+      "id": "local-file-org",
+      "group": "local-group",
+      "ical_file": "/path/to/local/calendar.ics",
+      "active": true,
+      "default_timezone": "Europe/Berlin",
+      "on_removed": "cancel",
+      "visibility": "PUBLIC",
+      "category": "MEETING",
+      "tags": [],
+      "max_future_events": 50,
+      "default_location": {
+        "description": "Default venue",
+        "street": "Street 1",
+        "locality": "City",
+        "postal_code": "12345",
+        "country": "DE",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.0,
+        "longitude": 10.0
+      }
+    },
+    {
+      "comment": "Example using recurring event pattern - generates events automatically (e.g., first Friday of every month)",
+      "id": "recurring-org",
+      "group": "recurring-group",
+      "active": true,
+      "recurring": {
+        "title": "Monthly Meeting",
+        "description": "We meet every first Friday of the month at 18:00",
+        "url": "https://example.org",
+        "pattern": {
+          "type": "monthly",
+          "day_of_week": "friday",
+          "week": "first",
+          "time": "18:00"
+        }
+      },
+      "default_timezone": "Europe/Berlin",
+      "on_removed": "cancel",
+      "visibility": "PUBLIC",
+      "category": "MEETING",
+      "tags": ["recurring", "meeting"],
+      "max_future_events": 12,
+      "default_location": {
+        "description": "Meeting place",
+        "street": "Example Street 1",
+        "locality": "City",
+        "postal_code": "12345",
+        "country": "DE",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.0,
+        "longitude": 10.0
+      }
+    }
+  ]
+}
