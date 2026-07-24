@@ -202,18 +202,16 @@ def _token_from_response(body: dict[str, Any]) -> TokenBundle:
 
 
 class MobilizonClient:
-    """Authenticated GraphQL client bound to a single org's token bundle."""
+    """Authenticated GraphQL client bound to an instance's token bundle."""
 
     def __init__(
         self,
         instance_url: str,
-        org_id: str,
         state: State,
         auth: MobilizonAuth,
         timeout: float = 30.0,
     ):
         self.instance_url = instance_url.rstrip("/")
-        self.org_id = org_id
         self.state = state
         self.auth = auth
         self._timeout = timeout
@@ -223,21 +221,21 @@ class MobilizonClient:
         self._client.close()
 
     def _token(self) -> TokenBundle:
-        t = self.state.get_token(self.instance_url, self.org_id)
+        t = self.state.get_token(self.instance_url)
         if t is None:
             raise OAuthError(
-                f"no token stored for org {self.org_id!r}. Run 'login' first."
+                f"no token stored for instance {self.instance_url!r}. Run 'login' first."
             )
         if t.access_expired():
             if t.refresh_expired():
                 raise OAuthError(
-                    f"refresh token expired for org {self.org_id!r}. Run 'login' again."
+                    f"refresh token expired for instance {self.instance_url!r}. Run 'login' again."
                 )
             creds = self.state.get_app(self.instance_url)
             if creds is None:
                 raise OAuthError("app credentials missing; run 'login' again.")
             t = self.auth.refresh(creds, t)
-            self.state.save_token(self.instance_url, self.org_id, t)
+            self.state.save_token(self.instance_url, t)
         return t
 
     def _is_rate_limited(self, exc: Exception) -> bool:

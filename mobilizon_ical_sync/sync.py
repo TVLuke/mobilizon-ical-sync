@@ -9,6 +9,11 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
+
+
+def _event_key(title: str, begins_on: str) -> str:
+    """Create a deterministic key for an event based on title and start time."""
+    return f"{title}|{begins_on}"
 from typing import Iterable
 
 from .config import OrgConfig
@@ -253,6 +258,14 @@ def sync_org(
         org.id, organizer_actor_id, group_id,
     )
 
+    # --- Build lookup of existing events by deterministic key ----------
+    # This helps prevent duplicates when state file is lost
+    existing_events = client.list_group_events(org.group, datetime.now(timezone.utc).isoformat())
+    existing_by_key: dict[str, dict[str, Any]] = {}
+    for event in existing_events:
+        key = _event_key(event["title"], event["beginsOn"])
+        existing_by_key[key] = event
+
     # --- Create or update -----------------------------------------------
     for uid, ev in ical_by_uid.items():
         if _is_excluded(ev.title, org.exclude_titles):
@@ -265,6 +278,20 @@ def sync_org(
             new_hash = _payload_hash(variables_no_ids)
 
             if mapping is None:
+                # Check if event already exists on server (state file may have been lost)
+                event_key = _event_key(ev.title, ev.begins_on.isoformat())
+                existing_event = existing_by_key.get(event_key)
+                if existing_event:
+                    # Recover the mapping from existing event
+                    state.upsert_mapping(
+                        org.id,
+                        EventMapping(ical_uid=uid, event_uuid=existing_event["uuid"], content_hash=new_hash),
+                    )
+                    stats.skipped += 1
+                    log.info("org=%s recovered mapping for existing event: %s (%s)", org.id, ev.title, existing_event["uuid"])
+                    continue
+                
+                # Event doesn't exist, create it
                 variables = dict(variables_no_ids)
                 variables.update({
                     "organizerActorId": organizer_actor_id,
@@ -374,6 +401,19 @@ def sync_org(
             except Exception as e:  # noqa: BLE001
                 stats.errors += 1
                 log.exception("org=%s failed to cancel/delete uid=%s: %s", org.id, uid, e)
+
+    # --- Delete all events when feed is empty and on_removed is delete ---
+    # This handles cleanup when state file is lost or empty
+    if len(ical_by_uid) == 0 and org.on_removed == "delete":
+        all_events = client.list_group_events(org.group, datetime.now(timezone.utc).isoformat())
+        for event in all_events:
+            try:
+                client.delete_event(event["id"])
+                stats.deleted += 1
+                log.info("org=%s deleted event from API: %s (%s)", org.id, event["title"], event["uuid"])
+            except Exception as e:  # noqa: BLE001
+                stats.errors += 1
+                log.exception("org=%s failed to delete event %s: %s", org.id, event["uuid"], e)
 
     return stats
 

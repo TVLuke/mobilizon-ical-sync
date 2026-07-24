@@ -1,7 +1,7 @@
 {
   "instance_url": "https://mobilizon.example.org",
   "app": {
-    "name": "iCal sync",
+    "name": "Event sync",
     "website": "https://example.org"
   },
   "state_file": "state.sqlite",

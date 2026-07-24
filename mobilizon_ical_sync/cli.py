@@ -32,8 +32,8 @@ def _setup_logging(verbose: bool) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="mobilizon-ical-sync",
-        description="Sync iCal feeds into Mobilizon groups as events.",
+        prog="mobilizon-event-sync",
+        description="Sync events from various sources into Mobilizon groups as events.",
     )
     p.add_argument("--config", "-c", type=Path, default=Path("config.json"))
     p.add_argument("--verbose", "-v", action="store_true")
@@ -45,11 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     login = sub.add_parser(
         "login",
-        help="Obtain OAuth tokens for one or all organizations via device flow.",
-    )
-    login.add_argument(
-        "--org",
-        help="Only log in for this organization id (defaults to all).",
+        help="Obtain OAuth token for the instance via device flow.",
     )
     login.add_argument(
         "--no-browser",
@@ -65,7 +61,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sync.add_argument(
         "--dry-run",
         action="store_true",
-        help="Parse iCal and print what would happen, but do not call the API.",
+        help="Parse events and print what would happen, but do not call the API.",
     )
 
     sub.add_parser("status", help="Print stored app/token state.")
@@ -94,97 +90,101 @@ def _cmd_init(cfg: Config, state: State) -> int:
     return 0
 
 
-def _cmd_login(cfg: Config, state: State, org_id: str | None, open_browser: bool) -> int:
+def _cmd_login(cfg: Config, state: State, open_browser: bool) -> int:
     auth = MobilizonAuth(cfg.instance_url, state, timeout=cfg.http_timeout_seconds)
     try:
         creds = auth.ensure_app(cfg.app.name, cfg.app.website)
-        for org in _select_orgs(cfg, org_id):
-            print(f"\n=== Login for org '{org.id}' ===")
-            dc = auth.request_device_code(creds)
-            print(f"Your one-time code: {dc.user_code}")
-            print(f"Verification URL:   {dc.verification_uri}")
-            print(f"(code expires in {dc.expires_in} seconds)")
-            if open_browser:
-                opened = webbrowser.open(dc.verification_uri, new=2)
-                if opened:
-                    print("Opened the URL in your default browser. Enter the code and approve.")
-                else:
-                    print("Could not open a browser automatically; open the URL above manually.")
+        print(f"\n=== Login for instance {cfg.instance_base} ===")
+        dc = auth.request_device_code(creds)
+        print(f"Your one-time code: {dc.user_code}")
+        print(f"Verification URL:   {dc.verification_uri}")
+        print(f"(code expires in {dc.expires_in} seconds)")
+        if open_browser:
+            opened = webbrowser.open(dc.verification_uri, new=2)
+            if opened:
+                print("Opened the URL in your default browser. Enter the code and approve.")
             else:
-                print("Open the URL above in a browser, enter the code, and approve.")
-            print("Waiting for approval", end="", flush=True)
+                print("Could not open a browser automatically; open the URL above manually.")
+        else:
+            print("Open the URL above in a browser, enter the code, and approve.")
+        print("Waiting for approval", end="", flush=True)
 
-            def _tick(_status: str) -> None:
-                print(".", end="", flush=True)
+        def _tick(_status: str) -> None:
+            print(".", end="", flush=True)
 
-            try:
-                token = auth.poll_device_token(creds, dc, on_poll=_tick)
-            finally:
-                print()  # newline after dots
-            print("Approved.")
-            state.save_token(cfg.instance_url, org.id, token)
-            print(f"Token stored for org '{org.id}'.")
+        try:
+            token = auth.poll_device_token(creds, dc, on_poll=_tick)
+        finally:
+            print()  # newline after dots
+        print("Approved.")
+        state.save_token(cfg.instance_url, token)
+        print(f"Token stored for instance {cfg.instance_base}.")
     finally:
         auth.close()
     return 0
 
 
 def _cmd_sync(cfg: Config, state: State, org_id: str | None, dry_run: bool) -> int:
+    import time
     auth = MobilizonAuth(cfg.instance_url, state, timeout=cfg.http_timeout_seconds)
     total_errors = 0
     try:
-        for org in _select_orgs(cfg, org_id):
-            if not org.active:
-                print(f"\n=== Skipping '{org.id}' (inactive) ===")
-                continue
-            
-            print(f"\n=== Syncing '{org.id}' ({org.group}) ===")
-            
-            # Determine event source and load events
-            if org.recurring:
-                print(f"Source: Recurring event pattern")
-                events = generate_recurring_events(
-                    org.recurring,
-                    org.default_timezone,
-                    org.max_future_events or 12,
+        client = MobilizonClient(
+            cfg.instance_url, state, auth, timeout=cfg.http_timeout_seconds
+        )
+        try:
+            for org in _select_orgs(cfg, org_id):
+                if not org.active:
+                    print(f"\n=== Skipping '{org.id}' (inactive) ===")
+                    continue
+                
+                print(f"\n=== Syncing '{org.id}' ({org.group}) ===")
+                
+                # Determine event source and load events
+                if org.recurring:
+                    print(f"Source: Recurring event pattern")
+                    events = generate_recurring_events(
+                        org.recurring,
+                        org.default_timezone,
+                        org.max_future_events or 12,
+                    )
+                elif org.ical_file:
+                    print(f"Source: Local file {org.ical_file}")
+                    events = dedupe(load_ical_file(org.ical_file, org.default_timezone))
+                elif org.ical_url:
+                    print(f"Source: URL {org.ical_url}")
+                    events = dedupe(load_ical(org.ical_url, cfg.http_timeout_seconds, org.default_timezone))
+                else:
+                    print(f"Error: No event source configured for org '{org.id}'")
+                    total_errors += 1
+                    continue
+                
+                events.sort(key=lambda e: e.begins_on)
+                capped = (
+                    events[: org.max_future_events]
+                    if org.max_future_events and org.max_future_events > 0
+                    else events
                 )
-            elif org.ical_file:
-                print(f"Source: Local file {org.ical_file}")
-                events = dedupe(load_ical_file(org.ical_file, org.default_timezone))
-            elif org.ical_url:
-                print(f"Source: URL {org.ical_url}")
-                events = dedupe(load_ical(org.ical_url, cfg.http_timeout_seconds, org.default_timezone))
-            else:
-                print(f"Error: No event source configured for org '{org.id}'")
-                total_errors += 1
-                continue
-            
-            events.sort(key=lambda e: e.begins_on)
-            capped = (
-                events[: org.max_future_events]
-                if org.max_future_events and org.max_future_events > 0
-                else events
-            )
-            print(
-                f"Events: {len(events)} future events after dedupe"
-                + (f" (syncing next {len(capped)})" if len(capped) != len(events) else "")
-            )
+                print(
+                    f"Events: {len(events)} future events after dedupe"
+                    + (f" (syncing next {len(capped)})" if len(capped) != len(events) else "")
+                )
 
-            if dry_run:
-                for ev in capped:
-                    print(f"  - {ev.begins_on.isoformat()}  {ev.title}  (uid={ev.uid})")
-                continue
+                if dry_run:
+                    for ev in capped:
+                        print(f"  - {ev.begins_on.isoformat()}  {ev.title}  (uid={ev.uid})")
+                    continue
 
-            client = MobilizonClient(
-                cfg.instance_url, org.id, state, auth, timeout=cfg.http_timeout_seconds
-            )
-            try:
                 config_dir = cfg.state_file.parent
                 stats = sync_org(org, events, client, state, config_dir)
-            finally:
-                client.close()
-            print("Result:", json.dumps(stats.as_dict()))
-            total_errors += stats.errors
+                print("Result:", json.dumps(stats.as_dict()))
+                total_errors += stats.errors
+                
+                # Add delay between organizations to avoid rate limiting
+                if not dry_run:
+                    time.sleep(2)
+        finally:
+            client.close()
     finally:
         auth.close()
     return 1 if total_errors else 0
@@ -197,15 +197,14 @@ def _cmd_status(cfg: Config, state: State) -> int:
     if creds:
         print(f"  client_id: {creds.client_id}")
         print(f"  scope:     {creds.scope}")
+    tok = state.get_token(cfg.instance_url)
+    print(f"token: {'logged in' if tok else 'not logged in'}")
+    if tok:
+        print(f"  access_expires_at={tok.access_expires_at}")
     print("organizations:")
     for org in cfg.organizations:
-        tok = state.get_token(cfg.instance_url, org.id)
         mappings = state.get_mappings(org.id)
-        print(f"  - {org.id} (group={org.group})")
-        if tok:
-            print(f"      token: access_expires_at={tok.access_expires_at}")
-        else:
-            print("      token: (not logged in)")
+        print(f"  - {org.id} (group={org.group}, active={org.active})")
         print(f"      tracked events: {len(mappings)}")
     return 0
 
@@ -224,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "init":
             return _cmd_init(cfg, state)
         if args.cmd == "login":
-            return _cmd_login(cfg, state, args.org, open_browser=not args.no_browser)
+            return _cmd_login(cfg, state, open_browser=not args.no_browser)
         if args.cmd == "sync":
             return _cmd_sync(cfg, state, args.org, args.dry_run)
         if args.cmd == "status":

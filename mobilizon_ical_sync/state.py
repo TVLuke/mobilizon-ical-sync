@@ -20,14 +20,12 @@ CREATE TABLE IF NOT EXISTS app (
 );
 
 CREATE TABLE IF NOT EXISTS token (
-    instance_url        TEXT NOT NULL,
-    org_id              TEXT NOT NULL,
+    instance_url        TEXT PRIMARY KEY,
     access_token        TEXT NOT NULL,
     refresh_token       TEXT NOT NULL,
     access_expires_at   INTEGER NOT NULL,
     refresh_expires_at  INTEGER NOT NULL,
-    scope               TEXT NOT NULL,
-    PRIMARY KEY (instance_url, org_id)
+    scope               TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS event_map (
@@ -124,25 +122,24 @@ class State:
             )
 
     # --- tokens ----------------------------------------------------------
-    def get_token(self, instance_url: str, org_id: str) -> TokenBundle | None:
+    def get_token(self, instance_url: str) -> TokenBundle | None:
         row = self._conn.execute(
             "SELECT access_token, refresh_token, access_expires_at, refresh_expires_at, scope "
-            "FROM token WHERE instance_url = ? AND org_id = ?",
-            (instance_url, org_id),
+            "FROM token WHERE instance_url = ?",
+            (instance_url,),
         ).fetchone()
         if row is None:
             return None
         return TokenBundle(*row)
 
-    def save_token(self, instance_url: str, org_id: str, t: TokenBundle) -> None:
+    def save_token(self, instance_url: str, t: TokenBundle) -> None:
         with self._tx() as c:
             c.execute(
                 "INSERT OR REPLACE INTO token "
-                "(instance_url, org_id, access_token, refresh_token, access_expires_at, refresh_expires_at, scope) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "(instance_url, access_token, refresh_token, access_expires_at, refresh_expires_at, scope) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     instance_url,
-                    org_id,
                     t.access_token,
                     t.refresh_token,
                     t.access_expires_at,
@@ -151,11 +148,11 @@ class State:
                 ),
             )
 
-    def delete_token(self, instance_url: str, org_id: str) -> None:
+    def delete_token(self, instance_url: str) -> None:
         with self._tx() as c:
             c.execute(
-                "DELETE FROM token WHERE instance_url = ? AND org_id = ?",
-                (instance_url, org_id),
+                "DELETE FROM token WHERE instance_url = ?",
+                (instance_url,),
             )
 
     # --- event mappings --------------------------------------------------

@@ -1,7 +1,7 @@
 {
   "instance_url": "https://termine.luebeck.jetzt",
   "app": {
-    "name": "chaotikum ical sync",
+    "name": "chaotikum event sync",
     "website": "https://chaotikum.org"
   },
   "state_file": "state.sqlite",
@@ -54,7 +54,7 @@
         ]
       },
       "tags": [],
-      "max_future_events": 50,
+      "max_future_events": 100,
       "default_location": {
         "description": "Nobreakspace des Chaotikum e.V.",
         "street": "Fackenburger Allee 11",
@@ -93,6 +93,15 @@
           "country": "DE",
           "latitude": 53.8366,
           "longitude": 10.7018
+        },
+        "Gewerkschaftshaus*": {
+          "description": "Gewerkschaftshaus",
+          "street": "Holstentorplatz 1-5",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "DE",
+          "latitude": 53.8657,
+          "longitude": 10.6778
         }
       }
     },
@@ -135,6 +144,182 @@
         "timezone": "Europe/Berlin",
         "latitude": 53.866207,
         "longitude": 10.674299
+      }
+    },
+    {
+      "id": "gemeinsam_buddeln",
+      "group": "gemeinsam_buddeln",
+      "ical_url": "https://mail.ysource.de/SOGo/dav/public/vorstand@gemeinsambuddeln.de/Calendar/44-65F75000-1-22754100.ics",
+      "active": true,
+      "default_timezone": "Europe/Berlin",
+      "on_removed": "cancel",
+      "visibility": "PUBLIC",
+      "category": "MEETING",
+      "metadata": [
+        {
+          "key": "mz:website:url",
+          "title": "Gemeinsam Buddeln",
+          "value": "https://gemeinsambuddeln.de",
+          "type": "STRING"
+        }
+      ],
+      "tags": ["wald", "buddeln", "natur"],
+      "max_future_events": 100,
+      "default_location": {
+        "description": "Waldhusen",
+        "locality": "Lübeck",
+        "country": "Germany",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.895,
+        "longitude": 10.741
+      },
+      "location_mapping": {
+        "Waldhusen": {
+          "description": "Waldhusen",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Moorgarten": {
+          "description": "Moorgarten",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Niendorf/Moorgarten": {
+          "description": "Moorgarten",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Bartelsholz": {
+          "description": "Bartelsholz",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Lauerholz": {
+          "description": "Lauerholz",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Schellbruch": {
+          "description": "Schellbruch",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Media Docks": {
+          "description": "Media Docks",
+          "street": "Willy-Brandt-Allee 31",
+          "locality": "Lübeck",
+          "postal_code": "23558",
+          "country": "Germany"
+        },
+        "Audimax Lübeck": {
+          "description": "Audimax Uni Lübeck",
+          "street": "Mönkhofer Weg 245",
+          "locality": "Lübeck",
+          "postal_code": "23562",
+          "country": "DE",
+          "latitude": 53.8358,
+          "longitude": 10.702
+        },
+        "Übergangshaus": {
+          "description": "Übergangshaus",
+          "street": "Fackenburger Allee 2",
+          "locality": "Lübeck",
+          "postal_code": "23554",
+          "country": "Germany"
+        },
+        "Krähenstrasse 32-34": {
+          "description": "Krähenstrasse 32-34",
+          "street": "Krähenstrasse 32-34",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Willy-Brandt-Haus": {
+          "description": "Willy-Brandt-Haus",
+          "street": "Wilhelmstraße 43",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "Germany"
+        },
+        "Europäische Hansemuseum (EHM)": {
+          "description": "Europäisches Hansemuseum",
+          "street": "Auf der Trave 1",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "Germany"
+        },
+        "Naturkundemuseum am Dom": {
+          "description": "Naturkundemuseum am Dom",
+          "street": "Domkirchhof 3",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "Germany"
+        },
+        "Klingenberg": {
+          "description": "Klingenberg",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Lindenplatz": {
+          "description": "Lindenplatz",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Chaotikum e.V. – nobreakspace": {
+        "description": "Nobreakspace des Chaotikum e.V.",
+        "street": "Fackenburger Allee 11",
+        "locality": "Lübeck",
+        "postal_code": "23554",
+        "region": "Schleswig-Holstein",
+        "country": "Germany",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.8689,
+        "longitude": 10.6713
+      },
+        "Nbsp": {
+        "description": "Nobreakspace des Chaotikum e.V.",
+        "street": "Fackenburger Allee 11",
+        "locality": "Lübeck",
+        "postal_code": "23554",
+        "region": "Schleswig-Holstein",
+        "country": "Germany",
+        "timezone": "Europe/Berlin",
+        "latitude": 53.8689,
+        "longitude": 10.6713
+      },
+        "Lauerhof": {
+          "description": "Lauerhof",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Waldhof Wesloe": {
+          "description": "Waldhof Wesloe",
+          "locality": "Lübeck",
+          "country": "Germany"
+        },
+        "Fleischhauerstr. 81": {
+          "description": "Fleischhauerstr. 81",
+          "street": "Fleischhauerstr. 81",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "Germany"
+        },
+        "Haus Eden": {
+          "description": "Haus Eden",
+          "street": "Königstraße 44",
+          "locality": "Lübeck",
+          "postal_code": "23552",
+          "country": "Germany"
+        },
+        "Groß Grönau": {
+          "description": "Groß Grönau",
+          "locality": "Groß Grönau",
+          "country": "Germany"
+        },
+        "Hamburg": {
+          "description": "Hamburg",
+          "locality": "Hamburg",
+          "country": "Germany"
+        }
       }
     }
   ]

@@ -1,7 +1,7 @@
 [project]
-name = "mobilizon-ical-sync"
+name = "mobilizon-event-sync"
 version = "0.1.0"
-description = "Sync iCal feeds into Mobilizon groups as events."
+description = "Sync events from various sources into Mobilizon groups as native events."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0-or-later" }
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mobilizon-ical-sync = "mobilizon_ical_sync.cli:main"
+mobilizon-event-sync = "mobilizon_ical_sync.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -192,7 +192,7 @@ def load_config(path: Path) -> Config:
 
     app_raw = raw.get("app") or {}
     app = AppInfo(
-        name=app_raw.get("name", "mobilizon-ical-sync"),
+        name=app_raw.get("name", "mobilizon-event-sync"),
         website=app_raw.get("website"),
     )
 

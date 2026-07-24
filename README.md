@@ -1,6 +1,6 @@
-# mobilizon-ical-sync
+# mobilizon-event-sync
 
-Sync one or more **iCal feeds** into **Mobilizon** groups as native events. Runs as a one-shot CLI you can schedule via cron / systemd timer / k8s CronJob.
+Sync events from various sources (iCal feeds, local files, or recurring patterns) into **Mobilizon** groups as native events. Runs as a one-shot CLI you can schedule via cron / systemd timer / k8s CronJob.
 
 Features:
 
@@ -63,19 +63,19 @@ Fields (as of current version):
 
 ```bash
 # 1. Register the app on the instance (creates client_id / client_secret in the state DB).
-mobilizon-ical-sync -c config.json init
+mobilizon-event-sync -c config.json init
 
 # 2. For each organization, obtain OAuth tokens via device flow.
-mobilizon-ical-sync -c config.json login
+mobilizon-event-sync -c config.json login
 # → prints a URL and a short code; open the URL, sign in, paste the code, approve.
 ```
 
 ## Sync
 
 ```bash
-mobilizon-ical-sync -c config.json sync             # all orgs
-mobilizon-ical-sync -c config.json sync --org my    # a single org
-mobilizon-ical-sync -c config.json sync --dry-run   # parse iCal, don't call the API
+mobilizon-event-sync -c config.json sync             # all orgs
+mobilizon-event-sync -c config.json sync --org my    # a single org
+mobilizon-event-sync -c config.json sync --dry-run   # parse events, don't call the API
 ```
 
 Exit code is non-zero if any per-event error occurred, so cron mails you on failure.
@@ -129,7 +129,7 @@ The system generates events starting from the current date up to `max_future_eve
 ### Example cron entry
 
 ```
-*/15 * * * * cd /opt/mobilizon-ical-sync && .venv/bin/mobilizon-ical-sync -c config.json sync >> sync.log 2>&1
+*/15 * * * * cd /opt/mobilizon-event-sync && .venv/bin/mobilizon-event-sync -c config.json sync >> sync.log 2>&1
 ```
 
 ## What gets mapped
