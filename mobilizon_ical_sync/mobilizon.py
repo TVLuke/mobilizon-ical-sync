@@ -60,7 +60,7 @@ class DeviceCode:
 
 
 class MobilizonAuth:
-    """Handles app registration, device flow, and token refresh."""
+    """Handles app registration, device flow, password login, and token refresh."""
 
     def __init__(self, instance_url: str, state: State, timeout: float = 30.0):
         self.instance_url = instance_url.rstrip("/")
@@ -103,6 +103,40 @@ class MobilizonAuth:
         )
         self.state.save_app(self.instance_url, creds)
         return creds
+
+    # -- Password login ----------------------------------------------------
+    def login_password(self, email: str, password: str) -> TokenBundle:
+        """Authenticate using email and password via GraphQL login mutation."""
+        query = """
+        mutation($email: String!, $password: String!) {
+          login(email: $email, password: $password) {
+            accessToken
+            refreshToken
+            user {
+              id
+              email
+            }
+          }
+        }
+        """
+        r = self._client.post(
+            f"{self.instance_url}/api",
+            json={"query": query, "variables": {"email": email, "password": password}},
+        )
+        if r.status_code >= 400:
+            raise OAuthError(f"password login failed ({r.status_code}): {r.text}")
+        body = r.json()
+        if "errors" in body:
+            raise OAuthError(f"password login failed: {body['errors']}")
+        login_data = body.get("data", {}).get("login")
+        if not login_data:
+            raise OAuthError("password login failed: no login data returned")
+        return _token_from_response({
+            "access_token": login_data["accessToken"],
+            "refresh_token": login_data["refreshToken"],
+            "expires_in": 3600,  # Default access token expiry (1 hour)
+            "refresh_token_expires_in": 15724800,  # 26 weeks in seconds
+        })
 
     # -- Device flow -------------------------------------------------------
     def request_device_code(self, creds: AppCredentials, scope: str | None = None) -> DeviceCode:

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  mobilizon-ical-sync:
+    build: .
+    container_name: mobilizon-ical-sync
+    restart: unless-stopped
+    volumes:
+      # Mount config file
+      - ./config.json:/app/config.json:ro
+      # Mount images directory (optional)
+      - ./images:/app/images:ro
+      # Persist database state in volume
+      - mobilizon_sync_data:/data
+    environment:
+      # Override cron schedule if needed (default: every hour)
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
+      # Mobilizon credentials for password-based authentication (REQUIRED for first run)
+      - MOBILIZON_EMAIL=${MOBILIZON_EMAIL}
+      - MOBILIZON_PASSWORD=${MOBILIZON_PASSWORD}
+
+volumes:
+  mobilizon_sync_data:

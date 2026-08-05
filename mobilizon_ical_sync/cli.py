@@ -91,10 +91,22 @@ def _cmd_init(cfg: Config, state: State) -> int:
 
 
 def _cmd_login(cfg: Config, state: State, open_browser: bool) -> int:
+    import os
     auth = MobilizonAuth(cfg.instance_url, state, timeout=cfg.http_timeout_seconds)
     try:
+        # Use password-based auth if email and password are provided via environment variables
+        email = os.environ.get("MOBILIZON_EMAIL")
+        password = os.environ.get("MOBILIZON_PASSWORD")
+        if email and password:
+            print(f"\n=== Login for instance {cfg.instance_base} (password-based) ===")
+            token = auth.login_password(email, password)
+            state.save_token(cfg.instance_url, token)
+            print(f"Token stored for instance {cfg.instance_base}.")
+            return 0
+        
+        # Otherwise use OAuth device flow
         creds = auth.ensure_app(cfg.app.name, cfg.app.website)
-        print(f"\n=== Login for instance {cfg.instance_base} ===")
+        print(f"\n=== Login for instance {cfg.instance_base} (OAuth device flow) ===")
         dc = auth.request_device_code(creds)
         print(f"Your one-time code: {dc.user_code}")
         print(f"Verification URL:   {dc.verification_uri}")

@@ -4,8 +4,11 @@
     "name": "Event sync",
     "website": "https://example.org"
   },
-  "state_file": "state.sqlite",
+  "state_file": "/data/state.sqlite",
   "http_timeout_seconds": 30,
+  "location_mapping_urls": {
+    "example-org": "https://example.org/addresses.json"
+  },
   "organizations": [
     {
       "id": "example-org",

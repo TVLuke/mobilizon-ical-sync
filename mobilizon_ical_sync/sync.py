@@ -236,11 +236,19 @@ def sync_org(
     config_dir: Path,
 ) -> SyncStats:
     stats = SyncStats()
+    now = datetime.now(timezone.utc)
     events_sorted = sorted(ical_events, key=lambda e: e.begins_on)
-    all_feed_uids = {e.uid for e in events_sorted}
+    
+    # Filter out past events - never modify events that have already ended
+    future_events = [e for e in events_sorted if e.begins_on > now]
+    past_count = len(events_sorted) - len(future_events)
+    if past_count > 0:
+        log.info("org=%s: skipping %d past events", org.id, past_count)
+    
+    all_feed_uids = {e.uid for e in future_events}
     if org.max_future_events and org.max_future_events > 0:
-        events_sorted = events_sorted[: org.max_future_events]
-    ical_by_uid: dict[str, ICalEvent] = {e.uid: e for e in events_sorted}
+        future_events = future_events[: org.max_future_events]
+    ical_by_uid: dict[str, ICalEvent] = {e.uid: e for e in future_events}
     mappings = state.get_mappings(org.id)
 
     log.info(
@@ -379,11 +387,25 @@ def sync_org(
                     state.delete_mapping(org.id, uid)
                     continue
 
+                # Fetch event details for logging and to check if it's in the past
+                event_details = _get_event_details_by_uuid(client, mapping.event_uuid)
+                event_info = f"{event_details.get('title', 'unknown')} ({event_details.get('beginsOn', 'unknown date')})" if event_details else mapping.event_uuid
+                
+                # Skip cancellation if event is in the past
+                if event_details and event_details.get('beginsOn'):
+                    try:
+                        event_date = datetime.fromisoformat(event_details['beginsOn'].replace('Z', '+00:00'))
+                        if event_date <= now:
+                            log.info("org=%s skipping past event: %s", org.id, event_info)
+                            continue
+                    except Exception:
+                        pass  # If date parsing fails, proceed with cancellation
+
                 if org.on_removed == "delete":
                     client.delete_event(event_id)
                     state.delete_mapping(org.id, uid)
                     stats.deleted += 1
-                    log.info("org=%s deleted: %s", org.id, mapping.event_uuid)
+                    log.info("org=%s deleted: %s", org.id, event_info)
                 else:  # cancel
                     client.update_event({"eventId": event_id, "status": "CANCELLED"})
                     # Keep the mapping so we won't cancel repeatedly, but
@@ -397,7 +419,7 @@ def sync_org(
                         ),
                     )
                     stats.cancelled += 1
-                    log.info("org=%s cancelled: %s", org.id, mapping.event_uuid)
+                    log.info("org=%s cancelled: %s (uid=%s)", org.id, event_info, uid)
             except Exception as e:  # noqa: BLE001
                 stats.errors += 1
                 log.exception("org=%s failed to cancel/delete uid=%s: %s", org.id, uid, e)
@@ -451,3 +473,13 @@ def _resolve_event_id_by_uuid(client: MobilizonClient, uuid: str) -> str | None:
     )
     ev = data.get("event")
     return ev["id"] if ev else None
+
+
+def _get_event_details_by_uuid(client: MobilizonClient, uuid: str) -> dict | None:
+    """Fetch event details (title, date) for a given UUID for logging."""
+    data = client.graphql(
+        "query($uuid: UUID!) { event(uuid: $uuid) { title beginsOn uuid } }",
+        {"uuid": uuid},
+    )
+    ev = data.get("event")
+    return ev if ev else None

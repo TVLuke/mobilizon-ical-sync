@@ -117,6 +117,11 @@ class OrgConfig:
     # Matching is case-insensitive and supports wildcards (*, ?, [...]).
     # Example: {"Open Space*": [{"key": "group", "title": "Chaotikum", "value": "https://chaotikum.org", "type": "STRING"}]}
     title_metadata_mapping: dict[str, list[dict]] = field(default_factory=dict)
+    # Optional mapping of organization IDs to URLs for external address mapping files.
+    # External files should be JSON with the same structure as location_mapping.
+    # Example: {"chaotikum": "https://example.com/addresses.json"}
+    # Remote mappings are merged with local ones; remote wins on key conflicts.
+    location_mapping_urls: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -126,6 +131,10 @@ class Config:
     state_file: Path
     http_timeout_seconds: float
     organizations: list[OrgConfig]
+    # Optional mapping of organization IDs to URLs for external address mapping files.
+    # External files should be JSON with a "location_mapping" key.
+    # Example: {"chaotikum": "https://example.com/addresses.json"}
+    location_mapping_urls: dict[str, str] = field(default_factory=dict)
 
     @property
     def instance_base(self) -> str:
@@ -181,6 +190,30 @@ def _parse_recurring_config(raw: dict | None) -> RecurringConfig | None:
     )
 
 
+def _fetch_external_location_mapping(url: str, timeout: float) -> dict[str, Location]:
+    """Fetch and parse external location mapping from a URL.
+    
+    The external JSON should have a "location_mapping" key containing
+    address objects in the same format as the local location_mapping.
+    """
+    import httpx
+    try:
+        response = httpx.get(url, timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+    except (httpx.HTTPError, json.JSONDecodeError) as e:
+        raise ValueError(f"Failed to fetch or parse external location mapping from {url}: {e}")
+    
+    if "location_mapping" not in data:
+        raise ValueError(f"External location mapping from {url} missing 'location_mapping' key")
+    
+    raw_mapping = data["location_mapping"]
+    if not isinstance(raw_mapping, dict):
+        raise ValueError(f"External location_mapping from {url} must be an object")
+    
+    return {key: _parse_location(value) for key, value in raw_mapping.items()}
+
+
 def load_config(path: Path) -> Config:
     with path.open("r", encoding="utf-8") as f:
         raw = json.load(f)
@@ -199,6 +232,10 @@ def load_config(path: Path) -> Config:
     state_file = Path(raw.get("state_file", "state.sqlite"))
     if not state_file.is_absolute():
         state_file = path.parent / state_file
+
+    # Parse global location_mapping_urls
+    location_mapping_urls = dict(raw.get("location_mapping_urls", {}))
+    http_timeout = float(raw.get("http_timeout_seconds", 30))
 
     orgs: list[OrgConfig] = []
     seen_ids: set[str] = set()
@@ -242,6 +279,7 @@ def load_config(path: Path) -> Config:
                     p: _parse_location(v)
                     for p, v in o.get("location_mapping", {}).items()
                 },
+                location_mapping_urls=dict(o.get("location_mapping_urls", {})),
                 metadata=list(o.get("metadata", [])),
                 default_image=o.get("default_image"),
                 title_image_mapping=dict(o.get("title_image_mapping", {})),
@@ -250,10 +288,55 @@ def load_config(path: Path) -> Config:
             )
         )
 
+    # Merge external location mappings for each organization
+    for org in orgs:
+        # Check org-specific URLs first, then global URLs
+        urls_to_fetch = list(org.location_mapping_urls.items())
+        if org.id in location_mapping_urls:
+            urls_to_fetch.append((org.id, location_mapping_urls[org.id]))
+        
+        if urls_to_fetch:
+            merged_mapping = dict(org.location_mapping)
+            for url_id, url in urls_to_fetch:
+                try:
+                    external_mapping = _fetch_external_location_mapping(url, http_timeout)
+                    # Merge with remote winning on conflicts
+                    merged_mapping.update(external_mapping)
+                except ValueError as e:
+                    # Log warning but continue with local mapping
+                    import logging
+                    logging.warning(f"Failed to load external location mapping for {org.id} from {url}: {e}")
+            # Replace the frozen org with a new one with merged mapping
+            org_index = orgs.index(org)
+            orgs[org_index] = OrgConfig(
+                id=org.id,
+                group=org.group,
+                ical_url=org.ical_url,
+                ical_file=org.ical_file,
+                recurring=org.recurring,
+                active=org.active,
+                actor_username=org.actor_username,
+                default_timezone=org.default_timezone,
+                on_removed=org.on_removed,
+                visibility=org.visibility,
+                category=org.category,
+                tags=org.tags,
+                max_future_events=org.max_future_events,
+                default_location=org.default_location,
+                location_mapping=merged_mapping,
+                metadata=org.metadata,
+                default_image=org.default_image,
+                title_image_mapping=org.title_image_mapping,
+                exclude_titles=org.exclude_titles,
+                title_metadata_mapping=org.title_metadata_mapping,
+                location_mapping_urls=org.location_mapping_urls,
+            )
+
     return Config(
         instance_url=raw["instance_url"],
         app=app,
         state_file=state_file,
-        http_timeout_seconds=float(raw.get("http_timeout_seconds", 30)),
+        http_timeout_seconds=http_timeout,
         organizations=orgs,
+        location_mapping_urls=location_mapping_urls,
     )

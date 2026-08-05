@@ -58,8 +58,13 @@ Fields (as of current version):
 | `organizations[].metadata` | Optional key-value pairs applied to every synced event. Each entry should have `key`, `value`, `title`, and `type` (uppercase: `STRING`, `INTEGER`, or `BOOLEAN`) fields. |
 | `organizations[].default_image` | Optional default image filename (from `images/` folder) applied to every synced event. The image will be uploaded to Mobilizon automatically. |
 | `organizations[].title_image_mapping` | Optional mapping of event titles to image filenames (from `images/` folder). Title must match precisely. Takes precedence over `default_image`. Images will be uploaded to Mobilizon automatically. Example: `{"Open Space/Chaostreff": "chaostreff.jpg"}`. |
+| `organizations[].exclude_titles` | Optional list of glob patterns for event titles to exclude from sync. Example: `["*internal*", "*do not sync*"]`. |
+| `organizations[].title_metadata_mapping` | Optional mapping of event title patterns to metadata. Pattern uses glob syntax. Example: `{"Open Space*": [{"key": "group", "title": "Chaotikum", "value": "https://chaotikum.org", "type": "STRING"}]}`. |
+| `organizations[].location_mapping` | Optional mapping of location name patterns to structured addresses. Pattern uses glob syntax. Supports all address fields. |
 
 ## First-time setup
+
+### Option 1: OAuth Device Flow (requires browser)
 
 ```bash
 # 1. Register the app on the instance (creates client_id / client_secret in the state DB).
@@ -69,6 +74,23 @@ mobilizon-event-sync -c config.json init
 mobilizon-event-sync -c config.json login
 # → prints a URL and a short code; open the URL, sign in, paste the code, approve.
 ```
+
+### Option 2: Password-based Authentication (for server deployments)
+
+Set your email and password as environment variables:
+
+```bash
+export MOBILIZON_EMAIL="your-email@example.com"
+export MOBILIZON_PASSWORD="your-password"
+```
+
+Then run:
+
+```bash
+mobilizon-event-sync -c config.json login
+```
+
+The tool will automatically use password-based authentication when the environment variables are set. Tokens are stored locally and refreshed automatically when they expire (refresh tokens last 26 weeks).
 
 ## Sync
 
@@ -132,6 +154,18 @@ The system generates events starting from the current date up to `max_future_eve
 */15 * * * * cd /opt/mobilizon-event-sync && .venv/bin/mobilizon-event-sync -c config.json sync >> sync.log 2>&1
 ```
 
+## Docker Deployment
+
+A Docker image is available for containerized deployments. See [DOCKER.md](DOCKER.md) for detailed instructions.
+
+Quick start:
+
+```bash
+docker-compose up -d
+```
+
+The container runs sync via cron (default: hourly) and persists state in a volume.
+
 ## What gets mapped
 
 | iCal | Mobilizon |
@@ -154,11 +188,12 @@ Physical addresses aren't imported as structured Mobilizon addresses — Mobiliz
 
 ## State file
 
-A SQLite DB with three tables:
+A SQLite DB with four tables:
 
 - `app` — one row per instance with the registered `client_id` / `client_secret`.
 - `token` — one row per `(instance, org_id)` with access and refresh tokens.
 - `event_map` — one row per `(org_id, ical_uid)` with the Mobilizon `event_uuid` and a content hash used to skip unchanged events.
+- `media_cache` — one row per `(org_id, filename)` with the Mobilizon `media_uuid` for uploaded images.
 
 Delete the state file to reset (you'll need to re-register the app and re-login).
 

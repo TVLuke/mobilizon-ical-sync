@@ -5,9 +5,12 @@ __pycache__/
 venv/
 build/
 images/*
+!images/.gitkeep
 dist/
 
 # Local runtime files
 state.sqlite
 state.sqlite-*
-#config.json
+
+# Credential script
+run_sync.sh
