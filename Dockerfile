@@ -20,9 +20,6 @@ RUN pip install --no-cache-dir -e .
 # Copy application code
 COPY mobilizon_ical_sync/ ./mobilizon_ical_sync/
 
-# Copy images directory if it exists (for image mapping features)
-COPY images/ ./images/ 2>/dev/null || true
-
 # Create directory for persistent data
 RUN mkdir -p /data
 

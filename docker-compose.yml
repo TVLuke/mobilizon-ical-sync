@@ -8,8 +8,6 @@ services:
     volumes:
       # Mount config file
       - ./config.json:/app/config.json:ro
-      # Mount images directory (optional)
-      - ./images:/app/images:ro
       # Persist database state in volume
       - mobilizon_sync_data:/data
     environment:
