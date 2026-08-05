@@ -13,12 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml first for better caching
+# Copy application code first (needed for editable install)
+COPY mobilizon_ical_sync/ ./mobilizon_ical_sync/
 COPY pyproject.toml .
 RUN pip install --no-cache-dir -e .
-
-# Copy application code
-COPY mobilizon_ical_sync/ ./mobilizon_ical_sync/
 
 # Create directory for persistent data
 RUN mkdir -p /data
