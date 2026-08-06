@@ -203,3 +203,7 @@ Delete the state file to reset (you'll need to re-register the app and re-login)
 - When events disappear from the iCal feed, the tool cancels, deletes, or ignores them based on the `on_removed` setting (default: cancel). This only applies to events the tool created.
 - Recurring iCal events (`RRULE`) are **not expanded**; only the base event is synced. Mobilizon has no first-class recurrence yet, so the pragmatic approach for recurring calendars is to feed an already-expanded ICS.
 - The default `on_removed: cancel` keeps the mapping alive so an event isn't cancelled twice. If the same UID reappears in the feed, it'll be brought back to `CONFIRMED` on the next diff.
+
+# Note on Use of LLMs
+
+This code was created using, among other tools, LLM tools like ChatGPT.
