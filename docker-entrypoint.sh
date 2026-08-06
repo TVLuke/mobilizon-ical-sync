@@ -29,7 +29,7 @@ fi
 CRON_SCHEDULE=${CRON_SCHEDULE:-"0 * * * *"}
 
 # Create cron file
-echo "$CRON_SCHEDULE cd /app && mobilizon-event-sync -c /app/config.json sync >> /var/log/sync.log 2>&1" > /etc/cron.d/mobilizon-sync
+echo "$CRON_SCHEDULE root cd /app && mobilizon-event-sync -c /app/config.json sync >> /var/log/sync.log 2>&1" > /etc/cron.d/mobilizon-sync
 
 # Give cron file proper permissions
 chmod 0644 /etc/cron.d/mobilizon-sync
