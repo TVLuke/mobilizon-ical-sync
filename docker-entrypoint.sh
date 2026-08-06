@@ -18,25 +18,20 @@ if [ -n "$MOBILIZON_EMAIL" ] && [ -n "$MOBILIZON_PASSWORD" ]; then
     echo "Credentials provided via environment variables"
     echo "Running init to register the app..."
     mobilizon-event-sync -c /app/config.json init
-    
+
     echo "Running login to obtain tokens..."
     mobilizon-event-sync -c /app/config.json login
     echo "✓ App registered and logged in successfully"
 fi
 
-# Setup cron job for hourly sync
-# CRON_SCHEDULE can be overridden via environment variable
-CRON_SCHEDULE=${CRON_SCHEDULE:-"0 * * * *"}
+# Run sync in a loop
+# SLEEP_INTERVAL can be overridden via environment variable (default: 1 hour)
+SLEEP_INTERVAL=${SLEEP_INTERVAL:-3600}
 
-# Create cron file
-echo "$CRON_SCHEDULE root cd /app && mobilizon-event-sync -c /app/config.json sync >> /var/log/sync.log 2>&1" > /etc/cron.d/mobilizon-sync
-
-# Give cron file proper permissions
-chmod 0644 /etc/cron.d/mobilizon-sync
-
-# Apply cron job
-crontab /etc/cron.d/mobilizon-sync
-
-# Start cron in foreground
-echo "Starting cron with schedule: $CRON_SCHEDULE"
-cron -f
+echo "Starting sync loop with interval: ${SLEEP_INTERVAL}s"
+while true; do
+    echo "Running sync at $(date)"
+    mobilizon-event-sync -c /app/config.json sync
+    echo "Sync completed, sleeping for ${SLEEP_INTERVAL}s"
+    sleep "$SLEEP_INTERVAL"
+done
