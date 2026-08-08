@@ -31,6 +31,10 @@ SLEEP_INTERVAL=${SLEEP_INTERVAL:-3600}
 echo "Starting sync loop with interval: ${SLEEP_INTERVAL}s"
 while true; do
     echo "Running sync at $(date)"
+    # Re-login before each sync to ensure fresh tokens
+    if [ -n "$MOBILIZON_EMAIL" ] && [ -n "$MOBILIZON_PASSWORD" ]; then
+        mobilizon-event-sync -c /app/config.json login
+    fi
     mobilizon-event-sync -c /app/config.json sync
     echo "Sync completed, sleeping for ${SLEEP_INTERVAL}s"
     sleep "$SLEEP_INTERVAL"
