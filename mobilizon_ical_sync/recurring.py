@@ -16,10 +16,11 @@ from .ical import ICalEvent
 @dataclass(frozen=True)
 class RecurringPattern:
     """Pattern for recurring events."""
-    type: Literal["monthly"]
+    type: Literal["monthly", "weekly"]
     day_of_week: Literal["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     week: Literal["first", "second", "third", "fourth", "last"]
     time: str  # HH:MM format
+    duration: float
 
 
 @dataclass(frozen=True)
@@ -111,21 +112,29 @@ def generate_recurring_events(
     timezone_obj = tz.gettz(default_timezone) or tz.UTC
     weekday = _weekday_from_string(config.pattern.day_of_week)
     time_obj = _parse_time(config.pattern.time)
+    length = config.pattern.duration or 2
+    recurrance = config.pattern.type
     
     events: list[ICalEvent] = []
     current_date = start_date
     
     # Generate events month by month
     while len(events) < max_events:
-        # Get the target date for this month
-        event_date = _get_nth_weekday_of_month(
-            current_date.year, current_date.month, weekday, config.pattern.week
-        )
+        if recurrance == 'monthly':
+            # Get the target date for this month
+            event_date = _get_nth_weekday_of_month(
+                current_date.year, current_date.month, weekday, config.pattern.week
+            )
+            # Skip if the date is before our start date
+            if event_date < start_date:
+                current_date = _get_next_month(current_date)
+                continue
+        elif recurrance == 'weekly':
+            # get the day of the week
+            # does not have an increment so far
+            days_until = (weekday - current_date.weekday() +7) % 7
+            event_date = current_date + timedelta(days=days_until)
         
-        # Skip if the date is before our start date
-        if event_date < start_date:
-            current_date = _get_next_month(current_date)
-            continue
         
         # Create the datetime
         event_datetime = datetime.combine(event_date, time_obj, tzinfo=timezone_obj)
@@ -136,7 +145,7 @@ def generate_recurring_events(
             uid = f"recurring-{config.title.lower().replace(' ', '-')}-{event_date.isoformat()}"
             
             # Calculate end time (2 hours after start by default)
-            end_datetime = event_datetime + timedelta(hours=2)
+            end_datetime = event_datetime + timedelta(hours=length)
             
             events.append(
                 ICalEvent(
@@ -155,8 +164,12 @@ def generate_recurring_events(
                 )
             )
         
-        # Move to next month
-        current_date = _get_next_month(current_date)
+        if recurrance == 'monthly':
+            # Move to next month
+            current_date = _get_next_month(current_date)
+        else:
+            # move to next week
+            current_date = current_date + timedelta(days=7)
     
     return events
 

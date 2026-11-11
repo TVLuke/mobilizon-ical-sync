@@ -64,6 +64,7 @@ class RecurringPattern:
     day_of_week: Literal["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     week: Literal["first", "second", "third", "fourth", "last"]
     time: str  # HH:MM format
+    duration: float
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,7 @@ def _parse_recurring_pattern(raw: dict) -> RecurringPattern:
         day_of_week=raw.get("day_of_week"),
         week=raw.get("week"),
         time=raw.get("time"),
+        duration=raw.get("duration"),
     )
 
 
